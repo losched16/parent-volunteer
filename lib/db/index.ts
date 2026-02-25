@@ -1,5 +1,5 @@
 // lib/db/index.ts
-import { Pool, QueryResult } from "pg";
+import { Pool, QueryResult, QueryResultRow } from "pg";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -9,7 +9,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-export async function query<T = any>(
+export async function query<T extends QueryResultRow = any>(
   text: string,
   params?: any[]
 ): Promise<QueryResult<T>> {
@@ -27,7 +27,7 @@ export async function query<T = any>(
   }
 }
 
-export async function getOne<T = any>(
+export async function getOne<T extends QueryResultRow = any>(
   text: string,
   params?: any[]
 ): Promise<T | null> {
@@ -35,7 +35,7 @@ export async function getOne<T = any>(
   return result.rows[0] || null;
 }
 
-export async function getMany<T = any>(
+export async function getMany<T extends QueryResultRow = any>(
   text: string,
   params?: any[]
 ): Promise<T[]> {
