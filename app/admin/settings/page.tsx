@@ -24,6 +24,10 @@ export default function SettingsPage() {
   const [addingAdmin, setAddingAdmin] = useState(false);
   const [deleteAdminId, setDeleteAdminId] = useState<string | null>(null);
 
+  // Change password state
+  const [passwords, setPasswords] = useState({ current_password: "", new_password: "", confirm_password: "" });
+  const [changingPassword, setChangingPassword] = useState(false);
+
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return; }
     if (status === "authenticated") {
@@ -81,7 +85,6 @@ export default function SettingsPage() {
       showToast("Admin created!");
       setNewAdmin({ email: "", password: "", first_name: "", last_name: "" });
       setShowAddAdmin(false);
-      // Reload admins
       const adminsRes = await fetch("/api/admin/users");
       const adminsData = await adminsRes.json();
       setAdmins(adminsData.admins || []);
@@ -111,6 +114,40 @@ export default function SettingsPage() {
       showToast("Failed to delete admin", "error");
     } finally {
       setDeleteAdminId(null);
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (passwords.new_password !== passwords.confirm_password) {
+      showToast("New passwords do not match", "error");
+      return;
+    }
+    if (passwords.new_password.length < 8) {
+      showToast("Password must be at least 8 characters", "error");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const res = await fetch("/api/admin/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          current_password: passwords.current_password,
+          new_password: passwords.new_password,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Failed to change password", "error");
+        return;
+      }
+      showToast("Password updated!");
+      setPasswords({ current_password: "", new_password: "", confirm_password: "" });
+    } catch {
+      showToast("Something went wrong", "error");
+    } finally {
+      setChangingPassword(false);
     }
   }
 
@@ -188,6 +225,34 @@ export default function SettingsPage() {
         </button>
       </form>
 
+      {/* Change Password */}
+      <div className="card p-6 max-w-2xl">
+        <h2 className="section-title mb-4">Change Password</h2>
+        <form onSubmit={handleChangePassword} className="space-y-4">
+          <div>
+            <label className="label">Current Password</label>
+            <input type="password" value={passwords.current_password}
+              onChange={(e) => setPasswords({ ...passwords, current_password: e.target.value })}
+              className="input-field" placeholder="Enter current password" required />
+          </div>
+          <div>
+            <label className="label">New Password</label>
+            <input type="password" value={passwords.new_password}
+              onChange={(e) => setPasswords({ ...passwords, new_password: e.target.value })}
+              className="input-field" placeholder="Min 8 characters" required minLength={8} />
+          </div>
+          <div>
+            <label className="label">Confirm New Password</label>
+            <input type="password" value={passwords.confirm_password}
+              onChange={(e) => setPasswords({ ...passwords, confirm_password: e.target.value })}
+              className="input-field" placeholder="Re-enter new password" required minLength={8} />
+          </div>
+          <button type="submit" disabled={changingPassword} className="btn-primary btn-sm">
+            {changingPassword ? "Updating..." : "Update Password"}
+          </button>
+        </form>
+      </div>
+
       {/* Admin Management */}
       <div className="card p-6 max-w-2xl">
         <div className="flex items-center justify-between mb-4">
@@ -221,10 +286,11 @@ export default function SettingsPage() {
                 className="input-field" placeholder="admin@salemmontessori.org" required />
             </div>
             <div>
-              <label className="label">Password</label>
+              <label className="label">Temporary Password</label>
               <input type="password" value={newAdmin.password}
                 onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
                 className="input-field" placeholder="Min 8 characters" required minLength={8} />
+              <p className="text-xs text-gray-400 mt-1">The new admin can change this after logging in via Settings</p>
             </div>
             <button type="submit" disabled={addingAdmin} className="btn-primary btn-sm">
               {addingAdmin ? "Creating..." : "Create Admin"}
