@@ -7,6 +7,7 @@ import { getDefaultSchool } from "@/lib/db/schools";
 import { getSignupsForOpportunity } from "@/lib/db/opportunities";
 import { sendBroadcastEmail } from "@/lib/email";
 import { z } from "zod";
+export const dynamic = "force-dynamic";
 
 const broadcastSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
