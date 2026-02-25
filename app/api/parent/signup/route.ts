@@ -6,6 +6,7 @@ import { createSignup, cancelSignup, getOpportunityById } from "@/lib/db/opportu
 import { findParentById } from "@/lib/db/parents";
 import { sendSignupConfirmation, sendCancellationConfirmation } from "@/lib/email";
 import { getOne } from "@/lib/db";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
