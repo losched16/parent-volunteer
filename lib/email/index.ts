@@ -1,114 +1,44 @@
 // lib/email/index.ts
-import nodemailer from "nodemailer";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.resend.com",
-  port: parseInt(process.env.SMTP_PORT || "465"),
-  secure: true,
-  auth: {
-    user: process.env.SMTP_USER || "resend",
-    pass: process.env.SMTP_PASSWORD,
-  },
-});
+const WEBHOOK_URLS = {
+  welcome: "https://services.leadconnectorhq.com/hooks/sgdhr60vufwWbqZodBIt/webhook-trigger/189e59ef-fe17-4111-88c8-22df00fbb84e",
+  signup_confirmation: "https://services.leadconnectorhq.com/hooks/sgdhr60vufwWbqZodBIt/webhook-trigger/8c9962a4-dd72-4a4b-be6e-54e8939dda65",
+  event_reminder: "https://services.leadconnectorhq.com/hooks/sgdhr60vufwWbqZodBIt/webhook-trigger/1092851e-f94b-4d72-a044-8811c5556547",
+  thank_you: "https://services.leadconnectorhq.com/hooks/sgdhr60vufwWbqZodBIt/webhook-trigger/b4a9eba2-5762-4abd-9f0d-ab11907b71d4",
+  cancellation: "https://services.leadconnectorhq.com/hooks/sgdhr60vufwWbqZodBIt/webhook-trigger/e2c5cf62-4ba3-4962-8ce6-5386d594f1eb",
+  milestone: "https://services.leadconnectorhq.com/hooks/sgdhr60vufwWbqZodBIt/webhook-trigger/2e87857f-9190-4337-9095-9155fe47ee2a",
+  broadcast: "https://services.leadconnectorhq.com/hooks/sgdhr60vufwWbqZodBIt/webhook-trigger/f630d8b1-49bc-4e3c-b897-37ae08e38240",
+};
 
-const FROM = `${process.env.EMAIL_FROM_NAME || "Salem Montessori School"} <${process.env.EMAIL_FROM || "volunteers@salemmontessori.com"}>`;
-const APP_URL = process.env.APP_URL || "http://localhost:3000";
-const SCHOOL_NAME = process.env.SCHOOL_NAME || "Salem Montessori School";
-const BRAND_COLOR = "#86BD40";
+const PORTAL_URL = process.env.APP_URL || "https://volunteers.salemmontessori.org";
 
-function emailWrapper(content: string): string {
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { margin: 0; padding: 0; background-color: #f4f7f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .header { background: ${BRAND_COLOR}; padding: 28px 32px; text-align: center; }
-    .header h1 { color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; }
-    .body { padding: 32px; color: #333333; line-height: 1.7; font-size: 15px; }
-    .body h2 { color: #2d5016; font-size: 20px; margin-top: 0; }
-    .btn { display: inline-block; background: ${BRAND_COLOR}; color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 16px 0; font-size: 15px; }
-    .btn:hover { background: #6da030; }
-    .detail-box { background: #f4fbe8; border-left: 4px solid ${BRAND_COLOR}; padding: 16px 20px; margin: 16px 0; border-radius: 0 8px 8px 0; }
-    .detail-box p { margin: 4px 0; }
-    .footer { background: #f9faf7; padding: 24px 32px; text-align: center; color: #888; font-size: 13px; border-top: 1px solid #eee; }
-    .progress-bar { background: #e8e8e8; border-radius: 10px; height: 20px; overflow: hidden; margin: 12px 0; }
-    .progress-fill { background: ${BRAND_COLOR}; height: 100%; border-radius: 10px; transition: width 0.3s; }
-    .milestone { text-align: center; padding: 20px; }
-    .milestone .number { font-size: 48px; font-weight: 700; color: ${BRAND_COLOR}; }
-  </style>
-</head>
-<body>
-  <div style="padding: 20px 12px;">
-    <div class="container">
-      <div class="header">
-        <h1>🌳 ${SCHOOL_NAME}</h1>
-      </div>
-      <div class="body">
-        ${content}
-      </div>
-      <div class="footer">
-        <p>${SCHOOL_NAME} Volunteer Portal</p>
-        <p><a href="${APP_URL}" style="color: ${BRAND_COLOR};">Visit Portal</a></p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`;
-}
-
-async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+async function triggerWebhook(url: string, data: any): Promise<boolean> {
   try {
-    await transporter.sendMail({
-      from: FROM,
-      to,
-      subject,
-      html: emailWrapper(html),
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...data, portal_url: PORTAL_URL }),
     });
-    console.log(`Email sent: ${subject} → ${to}`);
-    return true;
+    console.log(`Webhook triggered: ${data.type} → ${response.status}`);
+    return response.ok;
   } catch (error) {
-    console.error(`Email failed: ${subject} → ${to}`, error);
+    console.error(`Webhook failed: ${data.type}`, error);
     return false;
   }
 }
-
-// === EMAIL TEMPLATES ===
 
 export async function sendWelcomeEmail(parent: {
   email: string;
   first_name: string;
 }, requiredHours: number): Promise<boolean> {
-  return sendEmail(
-    parent.email,
-    `Welcome to the ${SCHOOL_NAME} Volunteer Portal!`,
-    `
-    <h2>Welcome, ${parent.first_name}! 🎉</h2>
-    <p>Thank you for joining the ${SCHOOL_NAME} Volunteer Portal. We're excited to have you as part of our community!</p>
-    
-    <div class="detail-box">
-      <p><strong>Your volunteer hour requirement:</strong> ${requiredHours} hours per school year</p>
-      <p><strong>Getting started:</strong> Browse available opportunities and sign up today!</p>
-    </div>
-    
-    <p>Here's what you can do in the portal:</p>
-    <ul>
-      <li>Browse and sign up for volunteer opportunities</li>
-      <li>Track your volunteer hours</li>
-      <li>View your upcoming events</li>
-      <li>See your volunteer history</li>
-    </ul>
-    
-    <p style="text-align: center;">
-      <a href="${APP_URL}/dashboard" class="btn">Go to Dashboard</a>
-    </p>
-    
-    <p>Thank you for making a difference at ${SCHOOL_NAME}!</p>
-    `
-  );
+  return triggerWebhook(WEBHOOK_URLS.welcome, {
+    type: "welcome",
+    email: parent.email,
+    first_name: parent.first_name,
+    required_hours: requiredHours,
+    hours_completed: 0,
+    hours_remaining: requiredHours,
+  });
 }
 
 export async function sendSignupConfirmation(parent: {
@@ -129,28 +59,24 @@ export async function sendSignupConfirmation(parent: {
     day: "numeric",
   });
 
-  return sendEmail(
-    parent.email,
-    `Confirmed: ${event.title} on ${date}`,
-    `
-    <h2>You're signed up! ✅</h2>
-    <p>Hi ${parent.first_name}, your volunteer signup has been confirmed.</p>
-    
-    <div class="detail-box">
-      <p><strong>Event:</strong> ${event.title}</p>
-      <p><strong>Date:</strong> ${date}</p>
-      <p><strong>Time:</strong> ${event.start_time} - ${event.end_time}</p>
-      <p><strong>Location:</strong> ${event.location}</p>
-      <p><strong>Hours Credit:</strong> ${event.hours_credit} hours</p>
-    </div>
-    
-    <p>We look forward to seeing you there! If you need to cancel, you can do so from your dashboard.</p>
-    
-    <p style="text-align: center;">
-      <a href="${APP_URL}/dashboard" class="btn">View Dashboard</a>
-    </p>
-    `
-  );
+  const formatTime = (t: string) => {
+    if (!t) return "";
+    const [h, m] = t.split(":");
+    const hr = parseInt(h);
+    return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
+  };
+
+  return triggerWebhook(WEBHOOK_URLS.signup_confirmation, {
+    type: "signup_confirmation",
+    email: parent.email,
+    first_name: parent.first_name,
+    event_title: event.title,
+    event_date: date,
+    start_time: formatTime(event.start_time),
+    end_time: formatTime(event.end_time),
+    location: event.location,
+    hours_credit: event.hours_credit,
+  });
 }
 
 export async function sendEventReminder(parent: {
@@ -170,23 +96,23 @@ export async function sendEventReminder(parent: {
     day: "numeric",
   });
 
-  return sendEmail(
-    parent.email,
-    `Reminder: ${event.title} Tomorrow`,
-    `
-    <h2>Friendly Reminder 📅</h2>
-    <p>Hi ${parent.first_name}, just a quick reminder about your upcoming volunteer event tomorrow!</p>
-    
-    <div class="detail-box">
-      <p><strong>Event:</strong> ${event.title}</p>
-      <p><strong>Date:</strong> ${date}</p>
-      <p><strong>Time:</strong> ${event.start_time} - ${event.end_time}</p>
-      <p><strong>Location:</strong> ${event.location}</p>
-    </div>
-    
-    <p>Thank you for volunteering your time!</p>
-    `
-  );
+  const formatTime = (t: string) => {
+    if (!t) return "";
+    const [h, m] = t.split(":");
+    const hr = parseInt(h);
+    return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
+  };
+
+  return triggerWebhook(WEBHOOK_URLS.event_reminder, {
+    type: "event_reminder",
+    email: parent.email,
+    first_name: parent.first_name,
+    event_title: event.title,
+    event_date: date,
+    start_time: formatTime(event.start_time),
+    end_time: formatTime(event.end_time),
+    location: event.location,
+  });
 }
 
 export async function sendThankYouEmail(parent: {
@@ -196,37 +122,17 @@ export async function sendThankYouEmail(parent: {
   title: string;
   hours_credit: number;
 }, totalHours: number, requiredHours: number): Promise<boolean> {
-  const remaining = Math.max(0, requiredHours - totalHours);
-  const percentage = Math.min(100, Math.round((totalHours / requiredHours) * 100));
-
-  return sendEmail(
-    parent.email,
-    `Thank you for volunteering! Hours updated`,
-    `
-    <h2>Thank You! 🙏</h2>
-    <p>Hi ${parent.first_name}, thank you for volunteering at <strong>${event.title}</strong>!</p>
-    
-    <div class="detail-box">
-      <p><strong>Hours credited:</strong> ${event.hours_credit} hours</p>
-      <p><strong>Total hours completed:</strong> ${totalHours} of ${requiredHours}</p>
-      <p><strong>Hours remaining:</strong> ${remaining}</p>
-    </div>
-    
-    <div class="progress-bar">
-      <div class="progress-fill" style="width: ${percentage}%"></div>
-    </div>
-    <p style="text-align: center; color: #666; font-size: 14px;">${percentage}% complete</p>
-    
-    ${totalHours >= requiredHours 
-      ? `<p style="text-align: center; font-size: 18px; color: ${BRAND_COLOR}; font-weight: 600;">🎉 You've met your volunteer requirement! Thank you!</p>`
-      : `<p>Keep up the great work! You're making a real difference at ${SCHOOL_NAME}.</p>`
-    }
-    
-    <p style="text-align: center;">
-      <a href="${APP_URL}/opportunities" class="btn">Browse More Opportunities</a>
-    </p>
-    `
-  );
+  return triggerWebhook(WEBHOOK_URLS.thank_you, {
+    type: "thank_you",
+    email: parent.email,
+    first_name: parent.first_name,
+    event_title: event.title,
+    hours_credit: event.hours_credit,
+    total_hours: totalHours,
+    required_hours: requiredHours,
+    hours_remaining: Math.max(0, requiredHours - totalHours),
+    progress_percentage: Math.min(100, Math.round((totalHours / requiredHours) * 100)),
+  });
 }
 
 export async function sendCancellationConfirmation(parent: {
@@ -243,51 +149,28 @@ export async function sendCancellationConfirmation(parent: {
     day: "numeric",
   });
 
-  return sendEmail(
-    parent.email,
-    `Signup Cancelled: ${event.title}`,
-    `
-    <h2>Signup Cancelled</h2>
-    <p>Hi ${parent.first_name}, your signup for <strong>${event.title}</strong> on ${date} has been cancelled.</p>
-    
-    <p>No worries! There are plenty of other opportunities to volunteer.</p>
-    
-    <p style="text-align: center;">
-      <a href="${APP_URL}/opportunities" class="btn">Browse Opportunities</a>
-    </p>
-    `
-  );
+  return triggerWebhook(WEBHOOK_URLS.cancellation, {
+    type: "cancellation",
+    email: parent.email,
+    first_name: parent.first_name,
+    event_title: event.title,
+    event_date: date,
+  });
 }
 
 export async function sendMilestoneEmail(parent: {
   email: string;
   first_name: string;
 }, milestone: number, totalHours: number, requiredHours: number): Promise<boolean> {
-  return sendEmail(
-    parent.email,
-    `Milestone Reached: ${milestone} Volunteer Hours! 🎉`,
-    `
-    <div class="milestone">
-      <div class="number">${milestone}</div>
-      <p style="font-size: 18px; color: #666; margin-top: 0;">hours of volunteering!</p>
-    </div>
-    
-    <h2>Congratulations, ${parent.first_name}! 🏆</h2>
-    <p>You've reached an incredible milestone of <strong>${milestone} volunteer hours</strong>!</p>
-    
-    <div class="detail-box">
-      <p><strong>Total hours:</strong> ${totalHours}</p>
-      <p><strong>Requirement:</strong> ${requiredHours} hours</p>
-      <p><strong>Remaining:</strong> ${Math.max(0, requiredHours - totalHours)} hours</p>
-    </div>
-    
-    <p>Your dedication makes ${SCHOOL_NAME} stronger. Thank you for all that you do!</p>
-    
-    <p style="text-align: center;">
-      <a href="${APP_URL}/dashboard" class="btn">View Your Progress</a>
-    </p>
-    `
-  );
+  return triggerWebhook(WEBHOOK_URLS.milestone, {
+    type: "milestone",
+    email: parent.email,
+    first_name: parent.first_name,
+    milestone,
+    total_hours: totalHours,
+    required_hours: requiredHours,
+    hours_remaining: Math.max(0, requiredHours - totalHours),
+  });
 }
 
 export async function sendBroadcastEmail(
@@ -297,20 +180,14 @@ export async function sendBroadcastEmail(
   parentName: string,
   hoursRemaining: number
 ): Promise<boolean> {
-  // Replace template variables
-  const processedBody = body
-    .replace(/\{parent_name\}/g, parentName)
-    .replace(/\{hours_remaining\}/g, String(hoursRemaining))
-    .replace(/\{school_name\}/g, SCHOOL_NAME)
-    .replace(/\n/g, "<br>");
-
-  return sendEmail(to, subject, `
-    <h2>${subject}</h2>
-    <p>${processedBody}</p>
-    <p style="text-align: center; margin-top: 24px;">
-      <a href="${APP_URL}/dashboard" class="btn">Visit Portal</a>
-    </p>
-  `);
+  return triggerWebhook(WEBHOOK_URLS.broadcast, {
+    type: "broadcast",
+    email: to,
+    first_name: parentName,
+    subject,
+    body,
+    hours_remaining: hoursRemaining,
+  });
 }
 
-export default sendEmail;
+export default triggerWebhook;
