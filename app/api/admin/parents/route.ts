@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { getAllParents, searchParents, findParentById, setParentHours, getParentHistory, getParentUpcomingSignups } from "@/lib/db/parents";
 import { getDefaultSchool } from "@/lib/db/schools";
 import { updateGHLHours } from "@/lib/ghl";
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
