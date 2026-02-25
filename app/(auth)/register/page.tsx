@@ -14,6 +14,7 @@ export default function RegisterPage() {
     last_name: "",
     phone: "",
     student_names: "",
+    student_count: "1",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -47,6 +48,7 @@ export default function RegisterPage() {
           last_name: form.last_name,
           phone: form.phone,
           student_names: form.student_names,
+          student_count: parseInt(form.student_count) || 1,
         }),
       });
 
@@ -135,6 +137,24 @@ export default function RegisterPage() {
             required
           />
           <p className="text-xs text-gray-400 mt-1">Separate multiple names with commas</p>
+        </div>
+
+        <div>
+          <label className="label">Number of Students Enrolled</label>
+          <select
+            value={form.student_count}
+            onChange={(e) => updateField("student_count", e.target.value)}
+            className="input-field w-32"
+          >
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+          <p className="text-xs text-gray-400 mt-1">
+            Co-op requirement: {Math.min(parseInt(form.student_count) * 12, 30)} hours
+          </p>
         </div>
 
         <div>
