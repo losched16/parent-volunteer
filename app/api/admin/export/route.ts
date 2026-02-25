@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { getAllParents } from "@/lib/db/parents";
 import { getSignupsForOpportunity } from "@/lib/db/opportunities";
 import { getDefaultSchool } from "@/lib/db/schools";
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
