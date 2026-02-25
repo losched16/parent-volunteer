@@ -3,7 +3,8 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { findParentByEmail, updateParentLogin } from "@/lib/db/parents";
-import { findAdminByEmail } from "@/lib/db/schools";
+import { findAdminByEmail, getDefaultSchool } from "@/lib/db/schools";
+import { findAdminUserByEmail, updateAdminUserLogin } from "@/lib/db/admins";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -44,6 +45,28 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        // First check admin_users table
+        try {
+          const adminUser = await findAdminUserByEmail(credentials.email);
+          if (adminUser) {
+            const isValid = await bcrypt.compare(credentials.password, adminUser.password_hash);
+            if (isValid) {
+              await updateAdminUserLogin(adminUser.id);
+              return {
+                id: adminUser.school_id,
+                email: adminUser.email,
+                name: `${adminUser.first_name} ${adminUser.last_name}`,
+                role: "admin" as const,
+                school_id: adminUser.school_id,
+              };
+            }
+          }
+        } catch (error) {
+          // admin_users table might not exist yet, fall through to schools table
+          console.log("admin_users table not available, checking schools table");
+        }
+
+        // Fallback to schools table (original admin)
         const school = await findAdminByEmail(credentials.email);
         if (!school) return null;
 
@@ -84,12 +107,11 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    maxAge: 7 * 24 * 60 * 60,
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-// Middleware helpers
 export function requireAuth(session: any) {
   if (!session?.user) {
     throw new Error("Unauthorized");
