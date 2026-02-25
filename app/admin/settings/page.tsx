@@ -86,7 +86,7 @@ export default function SettingsPage() {
 
         {/* GHL Settings */}
         <div className="card p-6">
-          <h2 className="section-title mb-4">GoHighLevel Integration</h2>
+          <h2 className="section-title mb-4">Growth Suite Integration</h2>
           <div className="space-y-4">
             <div>
               <label className="label">API Key</label>
