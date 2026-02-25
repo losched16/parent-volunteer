@@ -1,5 +1,16 @@
 // lib/ghl/index.ts
 
+// GHL Custom Field IDs
+const FIELD_IDS = {
+  volunteer_hours_completed: "t99La0egVTSaMu3mKaFt",
+  volunteer_hours_required: "owYIF93gunAuzCwlWA3o",
+  volunteer_hours_remaining: "i0Nc88y9d3j8ko8qZDTz",
+  last_volunteer_date: "0yOLdpH4NOrVmMRob8k0",
+  student_names: "d5XDFU1xeAQZ5bDjhUki",
+  parent_portal_id: "oHLJez5eIuA9cfxVoQMG",
+  volunteer_portal_registered: "gGv421sH9ue2mzJY0xa2",
+};
+
 interface GHLConfig {
   apiKey: string;
   locationId: string;
@@ -54,7 +65,6 @@ class GHLClient {
   }
 
   async createOrUpdateContact(data: GHLContactData): Promise<{ id: string }> {
-    // Try to find existing contact by email
     try {
       const searchResult = await this.request(
         "GET",
@@ -70,7 +80,6 @@ class GHLClient {
       console.log("No existing contact found, creating new one");
     }
 
-    // Create new contact
     const result = await this.request("POST", "/contacts/", {
       locationId: this.locationId,
       email: data.email,
@@ -117,30 +126,20 @@ class GHLClient {
     hoursRequired: number,
     lastVolunteerDate?: string
   ): Promise<void> {
-    const customFields: { id: string; value: string | number }[] = [];
-
-    // Note: These field IDs need to be mapped via admin settings
-    // Using field keys as placeholders - real IDs come from GHL
-    const fieldMappings: Record<string, string | number> = {
-      volunteer_hours_completed: hoursCompleted,
-      volunteer_hours_required: hoursRequired,
-      volunteer_hours_remaining: Math.max(0, hoursRequired - hoursCompleted),
-    };
+    const customFields: { id: string; value: string | number }[] = [
+      { id: FIELD_IDS.volunteer_hours_completed, value: hoursCompleted },
+      { id: FIELD_IDS.volunteer_hours_required, value: hoursRequired },
+      { id: FIELD_IDS.volunteer_hours_remaining, value: Math.max(0, hoursRequired - hoursCompleted) },
+    ];
 
     if (lastVolunteerDate) {
-      fieldMappings.last_volunteer_date = lastVolunteerDate;
+      customFields.push({ id: FIELD_IDS.last_volunteer_date, value: lastVolunteerDate });
     }
-
-    // Convert to custom field format (admin configures actual field IDs)
-    Object.entries(fieldMappings).forEach(([key, value]) => {
-      customFields.push({ id: key, value });
-    });
 
     await this.updateContact(contactId, { customFields });
   }
 }
 
-// Factory function
 export function createGHLClient(apiKey?: string, locationId?: string): GHLClient | null {
   const key = apiKey || process.env.GHL_API_KEY;
   const locId = locationId || process.env.GHL_LOCATION_ID;
@@ -153,8 +152,8 @@ export function createGHLClient(apiKey?: string, locationId?: string): GHLClient
   return new GHLClient({ apiKey: key, locationId: locId });
 }
 
-// High-level sync functions
 export async function syncParentToGHL(parent: {
+  id?: string;
   email: string;
   first_name: string;
   last_name: string;
@@ -173,10 +172,12 @@ export async function syncParentToGHL(parent: {
       lastName: parent.last_name,
       phone: parent.phone,
       customFields: [
-        { id: "volunteer_hours_completed", value: parent.total_hours_completed },
-        { id: "volunteer_hours_required", value: requiredHours },
-        { id: "volunteer_hours_remaining", value: Math.max(0, requiredHours - parent.total_hours_completed) },
-        { id: "student_names", value: parent.student_names },
+        { id: FIELD_IDS.volunteer_hours_completed, value: parent.total_hours_completed },
+        { id: FIELD_IDS.volunteer_hours_required, value: requiredHours },
+        { id: FIELD_IDS.volunteer_hours_remaining, value: Math.max(0, requiredHours - parent.total_hours_completed) },
+        { id: FIELD_IDS.student_names, value: parent.student_names },
+        { id: FIELD_IDS.parent_portal_id, value: parent.id || "" },
+        { id: FIELD_IDS.volunteer_portal_registered, value: new Date().toISOString().split("T")[0] },
       ],
       tags: ["volunteer_portal_active"],
     });
@@ -204,7 +205,6 @@ export async function updateGHLHours(
       new Date().toISOString().split("T")[0]
     );
 
-    // Add/remove completion tag
     if (hoursCompleted >= requiredHours) {
       await client.addTag(ghlContactId, "volunteer_hours_complete");
     } else {
@@ -213,7 +213,6 @@ export async function updateGHLHours(
       } catch {}
     }
 
-    // Milestone tags
     const milestones = [5, 10, 15, 20];
     for (const milestone of milestones) {
       if (hoursCompleted >= milestone) {
