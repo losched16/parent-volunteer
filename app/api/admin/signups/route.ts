@@ -7,6 +7,7 @@ import { findParentById } from "@/lib/db/parents";
 import { getDefaultSchool } from "@/lib/db/schools";
 import { sendThankYouEmail, sendMilestoneEmail } from "@/lib/email";
 import { updateGHLHours } from "@/lib/ghl";
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
