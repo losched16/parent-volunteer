@@ -6,7 +6,6 @@ import { findParentByEmail, createParent } from "@/lib/db/parents";
 import { getDefaultSchool } from "@/lib/db/schools";
 import { sendWelcomeEmail } from "@/lib/email";
 import { syncParentToGHL } from "@/lib/ghl";
-export const dynamic = "force-dynamic";
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -15,6 +14,7 @@ const registerSchema = z.object({
   last_name: z.string().min(1, "Last name is required"),
   phone: z.string().min(1, "Phone number is required"),
   student_names: z.string().min(1, "Student name(s) required"),
+  student_count: z.number().int().min(1).max(5).default(1),
 });
 
 export async function POST(request: NextRequest) {
@@ -52,10 +52,14 @@ export async function POST(request: NextRequest) {
       last_name: data.last_name,
       phone: data.phone,
       student_names: data.student_names,
+      student_count: data.student_count,
     });
 
+    // Calculate required hours for this family
+    const requiredHours = Math.min(data.student_count * (school.hours_per_student || 12), school.max_family_hours || 30);
+
     // Sync to GHL (non-blocking)
-    syncParentToGHL(parent, school.required_hours_per_year).then(async (ghlId) => {
+    syncParentToGHL(parent, requiredHours).then(async (ghlId) => {
       if (ghlId) {
         const { updateParentGHLContactId } = await import("@/lib/db/parents");
         await updateParentGHLContactId(parent.id, ghlId);
@@ -63,7 +67,7 @@ export async function POST(request: NextRequest) {
     }).catch(console.error);
 
     // Send welcome email (non-blocking)
-    sendWelcomeEmail(parent, school.required_hours_per_year).catch(console.error);
+    sendWelcomeEmail(parent, requiredHours).catch(console.error);
 
     return NextResponse.json(
       { message: "Registration successful", parentId: parent.id },
