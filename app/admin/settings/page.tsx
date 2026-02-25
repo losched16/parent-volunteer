@@ -1,10 +1,11 @@
-// app/(admin)/settings/page.tsx
+// app/admin/settings/page.tsx
 "use client";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
 import Loading from "@/components/ui/Loading";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
@@ -16,16 +17,24 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [ghlKey, setGhlKey] = useState("");
 
+  // Admin management state
+  const [admins, setAdmins] = useState<any[]>([]);
+  const [showAddAdmin, setShowAddAdmin] = useState(false);
+  const [newAdmin, setNewAdmin] = useState({ email: "", password: "", first_name: "", last_name: "" });
+  const [addingAdmin, setAddingAdmin] = useState(false);
+  const [deleteAdminId, setDeleteAdminId] = useState<string | null>(null);
+
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return; }
     if (status === "authenticated") {
-      fetch("/api/admin/settings")
-        .then((r) => r.json())
-        .then((data) => {
-          setSchool(data.school || {});
-          setSettings(data.settings || {});
-        })
-        .finally(() => setLoading(false));
+      Promise.all([
+        fetch("/api/admin/settings").then((r) => r.json()),
+        fetch("/api/admin/users").then((r) => r.json()).catch(() => ({ admins: [] })),
+      ]).then(([settingsData, adminsData]) => {
+        setSchool(settingsData.school || {});
+        setSettings(settingsData.settings || {});
+        setAdmins(adminsData.admins || []);
+      }).finally(() => setLoading(false));
     }
   }, [status]);
 
@@ -55,7 +64,60 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleAddAdmin(e: React.FormEvent) {
+    e.preventDefault();
+    setAddingAdmin(true);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newAdmin),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Failed to create admin", "error");
+        return;
+      }
+      showToast("Admin created!");
+      setNewAdmin({ email: "", password: "", first_name: "", last_name: "" });
+      setShowAddAdmin(false);
+      // Reload admins
+      const adminsRes = await fetch("/api/admin/users");
+      const adminsData = await adminsRes.json();
+      setAdmins(adminsData.admins || []);
+    } catch {
+      showToast("Something went wrong", "error");
+    } finally {
+      setAddingAdmin(false);
+    }
+  }
+
+  async function handleDeleteAdmin() {
+    if (!deleteAdminId) return;
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: deleteAdminId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Cannot delete this admin", "error");
+        return;
+      }
+      showToast("Admin removed");
+      setAdmins(admins.filter((a) => a.id !== deleteAdminId));
+    } catch {
+      showToast("Failed to delete admin", "error");
+    } finally {
+      setDeleteAdminId(null);
+    }
+  }
+
   if (loading) return <Loading />;
+
+  const formatDate = (d: string) =>
+    d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Never";
 
   return (
     <div className="space-y-6">
@@ -92,14 +154,14 @@ export default function SettingsPage() {
               <label className="label">API Key</label>
               <input type="password" value={ghlKey || school.ghl_api_key || ""}
                 onChange={(e) => setGhlKey(e.target.value)}
-                className="input-field" placeholder="Enter GHL API key" />
+                className="input-field" placeholder="Enter Growth Suite API key" />
               <p className="text-xs text-gray-400 mt-1">Leave blank to keep existing key</p>
             </div>
             <div>
               <label className="label">Location ID</label>
               <input type="text" value={school.ghl_location_id || ""}
                 onChange={(e) => setSchool({ ...school, ghl_location_id: e.target.value })}
-                className="input-field" placeholder="GHL Location ID" />
+                className="input-field" placeholder="Growth Suite Location ID" />
             </div>
           </div>
         </div>
@@ -125,6 +187,91 @@ export default function SettingsPage() {
           {saving ? "Saving..." : "Save Settings"}
         </button>
       </form>
+
+      {/* Admin Management */}
+      <div className="card p-6 max-w-2xl">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="section-title">Admin Users</h2>
+          <button onClick={() => setShowAddAdmin(!showAddAdmin)} className="btn-primary btn-sm">
+            {showAddAdmin ? "Cancel" : "+ Add Admin"}
+          </button>
+        </div>
+
+        {/* Add admin form */}
+        {showAddAdmin && (
+          <form onSubmit={handleAddAdmin} className="bg-gray-50 rounded-lg p-4 mb-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">First Name</label>
+                <input type="text" value={newAdmin.first_name}
+                  onChange={(e) => setNewAdmin({ ...newAdmin, first_name: e.target.value })}
+                  className="input-field" placeholder="Jane" required />
+              </div>
+              <div>
+                <label className="label">Last Name</label>
+                <input type="text" value={newAdmin.last_name}
+                  onChange={(e) => setNewAdmin({ ...newAdmin, last_name: e.target.value })}
+                  className="input-field" placeholder="Smith" required />
+              </div>
+            </div>
+            <div>
+              <label className="label">Email</label>
+              <input type="email" value={newAdmin.email}
+                onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
+                className="input-field" placeholder="admin@salemmontessori.org" required />
+            </div>
+            <div>
+              <label className="label">Password</label>
+              <input type="password" value={newAdmin.password}
+                onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
+                className="input-field" placeholder="Min 8 characters" required minLength={8} />
+            </div>
+            <button type="submit" disabled={addingAdmin} className="btn-primary btn-sm">
+              {addingAdmin ? "Creating..." : "Create Admin"}
+            </button>
+          </form>
+        )}
+
+        {/* Admin list */}
+        <div className="divide-y divide-gray-100">
+          {admins.map((admin) => (
+            <div key={admin.id} className="flex items-center justify-between py-3">
+              <div>
+                <p className="font-semibold text-gray-800">
+                  {admin.first_name} {admin.last_name}
+                  {admin.role === "super_admin" && (
+                    <span className="badge-blue ml-2">Primary</span>
+                  )}
+                </p>
+                <p className="text-sm text-gray-500">{admin.email}</p>
+                <p className="text-xs text-gray-400">Last login: {formatDate(admin.last_login)}</p>
+              </div>
+              {admin.role !== "super_admin" && (
+                <button
+                  onClick={() => setDeleteAdminId(admin.id)}
+                  className="text-red-400 hover:text-red-600 text-sm p-2 rounded hover:bg-red-50"
+                  title="Remove admin"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
+          {admins.length === 0 && (
+            <p className="text-gray-500 text-sm py-4">No admin users found. The primary admin account is managed in school settings.</p>
+          )}
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={!!deleteAdminId}
+        title="Remove Admin"
+        message="Are you sure you want to remove this admin? They will no longer be able to log in to the admin portal."
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={handleDeleteAdmin}
+        onCancel={() => setDeleteAdminId(null)}
+      />
     </div>
   );
-}
+}S
