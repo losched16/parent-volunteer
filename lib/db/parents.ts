@@ -24,12 +24,13 @@ export async function createParent(data: {
   last_name: string;
   phone: string;
   student_names: string;
+  student_count?: number;
 }): Promise<Parent> {
   const result = await query<Parent>(
-    `INSERT INTO parents (school_id, email, password_hash, first_name, last_name, phone, student_names, total_hours_completed)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 0)
+    `INSERT INTO parents (school_id, email, password_hash, first_name, last_name, phone, student_names, student_count, total_hours_completed)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0)
      RETURNING *`,
-    [data.school_id, data.email.toLowerCase(), data.password_hash, data.first_name, data.last_name, data.phone, data.student_names]
+    [data.school_id, data.email.toLowerCase(), data.password_hash, data.first_name, data.last_name, data.phone, data.student_names, data.student_count || 1]
   );
   return result.rows[0];
 }
