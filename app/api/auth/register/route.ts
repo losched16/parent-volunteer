@@ -6,6 +6,7 @@ import { findParentByEmail, createParent } from "@/lib/db/parents";
 import { getDefaultSchool } from "@/lib/db/schools";
 import { sendWelcomeEmail } from "@/lib/email";
 import { syncParentToGHL } from "@/lib/ghl";
+export const dynamic = "force-dynamic";
 
 const registerSchema = z.object({
   email: z.string().email(),
