@@ -9,6 +9,12 @@ export interface School {
   required_hours_per_year: number;
   ghl_api_key: string | null;
   ghl_location_id: string | null;
+  hours_per_student: number;
+  max_family_hours: number;
+  billing_rate_per_hour: number;
+  billing_deadline_month: number;
+  academic_year_start_month: number;
+  current_academic_year: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -22,7 +28,13 @@ export interface Parent {
   last_name: string;
   phone: string;
   student_names: string;
+  student_count: number;
   total_hours_completed: number;
+  required_hours_override: number | null;
+  rollover_hours: number;
+  academic_year: string;
+  enrollment_date: string;
+  prorated: boolean;
   ghl_contact_id: string | null;
   created_at: Date;
   updated_at: Date;
