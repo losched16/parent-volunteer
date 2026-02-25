@@ -1,11 +1,11 @@
 // app/(auth)/login/page.tsx
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -62,25 +62,11 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="label">Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="input-field"
-            placeholder="your@email.com"
-            required
-          />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-field" placeholder="your@email.com" required />
         </div>
         <div>
           <label className="label">Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="input-field"
-            placeholder="••••••••"
-            required
-          />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-field" placeholder="••••••••" required />
         </div>
         <button type="submit" disabled={loading} className="btn-primary w-full">
           {loading ? (
@@ -88,9 +74,7 @@ export default function LoginPage() {
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               Signing in...
             </span>
-          ) : (
-            "Sign In"
-          )}
+          ) : "Sign In"}
         </button>
       </form>
 
@@ -98,18 +82,21 @@ export default function LoginPage() {
         {!isAdmin && (
           <p className="text-sm text-gray-500">
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-brand-600 font-semibold hover:underline">
-              Register
-            </Link>
+            <Link href="/register" className="text-brand-600 font-semibold hover:underline">Register</Link>
           </p>
         )}
-        <button
-          onClick={() => setIsAdmin(!isAdmin)}
-          className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-        >
+        <button onClick={() => setIsAdmin(!isAdmin)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
           {isAdmin ? "← Parent Login" : "Admin Login →"}
         </button>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="card p-8 text-center">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
