@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { findParentById, updateParentProfile } from "@/lib/db/parents";
 import { z } from "zod";
+export const dynamic = "force-dynamic";
 
 const profileSchema = z.object({
   first_name: z.string().min(1),
