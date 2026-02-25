@@ -1,4 +1,4 @@
-// app/(admin)/parents/page.tsx
+// app/admin/parents/page.tsx
 "use client";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -110,14 +110,14 @@ export default function AdminParentsPage() {
                     <p className="text-gray-400 text-xs">{parent.phone}</p>
                   </td>
                   <td className="p-4 text-center">
-                    {editHours?.id === parent.id ? (
+                    {editHours !== null && editHours.id === parent.id ? (
                       <div className="flex items-center gap-1 justify-center">
                         <input
                           type="number"
                           step="0.5"
                           min="0"
                           value={editHours.hours}
-                          onChange={(e) => setEditHours({ ...editHours, hours: parseFloat(e.target.value) || 0 })}
+                          onChange={(e) => setEditHours({ id: editHours.id, hours: parseFloat(e.target.value) || 0 })}
                           className="w-16 input-field text-center text-xs py-1 px-2"
                         />
                         <button onClick={saveHours} className="text-brand-600 font-bold text-xs">✓</button>
