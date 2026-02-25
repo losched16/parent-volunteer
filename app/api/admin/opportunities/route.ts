@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createOpportunity, getAllOpportunities, updateOpportunity, deleteOpportunity, getOpportunityById } from "@/lib/db/opportunities";
 import { z } from "zod";
+export const dynamic = "force-dynamic";
 
 const opportunitySchema = z.object({
   title: z.string().min(1, "Title is required"),
