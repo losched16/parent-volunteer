@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getOne, getMany } from "@/lib/db";
 import { getDefaultSchool } from "@/lib/db/schools";
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
