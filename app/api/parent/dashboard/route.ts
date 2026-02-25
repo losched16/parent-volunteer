@@ -22,14 +22,14 @@ export async function GET(request: NextRequest) {
     }
 
     const school = await getDefaultSchool();
-    const hoursPerStudent = parseFloat(school?.hours_per_student) || 12;
-    const maxFamilyHours = parseFloat(school?.max_family_hours) || 30;
-    const billingRate = parseFloat(school?.billing_rate_per_hour) || 30;
+    const hoursPerStudent = Number(school?.hours_per_student) || 12;
+    const maxFamilyHours = Number(school?.max_family_hours) || 30;
+    const billingRate = Number(school?.billing_rate_per_hour) || 30;
     const academicYear = getCurrentAcademicYear();
 
     // Calculate required hours based on student count (or use override)
     const requiredHours = parent.required_hours_override !== null && parent.required_hours_override !== undefined
-      ? parseFloat(parent.required_hours_override)
+      ? Number(parent.required_hours_override)
       : calculateRequiredHours(parent.student_count || 1, hoursPerStudent, maxFamilyHours);
 
     // Get purchase credit hours
@@ -37,10 +37,10 @@ export async function GET(request: NextRequest) {
       "SELECT COALESCE(SUM(hours_credited), 0) as total FROM purchase_credits WHERE parent_id = $1 AND academic_year = $2",
       [parent.id, academicYear]
     );
-    const purchaseHours = parseFloat(purchaseResult[0]?.total) || 0;
+    const purchaseHours = Number(purchaseResult[0]?.total) || 0;
 
-    const volunteerHours = parseFloat(parent.total_hours_completed as any) || 0;
-    const rolloverHours = parseFloat(parent.rollover_hours as any) || 0;
+    const volunteerHours = Number(parent.total_hours_completed) || 0;
+    const rolloverHours = Number(parent.rollover_hours) || 0;
     const runningTotal = calculateRunningTotal(volunteerHours, purchaseHours, rolloverHours);
     const { hoursShort, amountDue } = calculateBalanceDue(requiredHours, runningTotal, billingRate);
     const bankedHours = calculateBankedHours(requiredHours, runningTotal);
